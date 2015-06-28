@@ -3,8 +3,8 @@
 #include <iostream>
 #include <algorithm>    // std::max, std::fill
 #define _USE_MATH_DEFINES
-#include <math.h> //log ...
-#include <cmath> //M_PI
+#include <math.h> // log, pow ...
+#include <cmath> // M_PI
 
 REESolver::REESolver()
 {
@@ -17,7 +17,9 @@ REESolver::~REESolver()
 }
 
 bool REESolver::initialize()
-{
+{// initialize to default (as for Project 1: free-vortex design
+	/*
+	_isPressRatioSpecified = false;
 	_gasConst = 287.1;
 	_gamma = 1.4;
 
@@ -33,25 +35,88 @@ bool REESolver::initialize()
 	_convCritRHS = 0.; 
 	_convCritPsi = 0.;
 
-	_rCtIn = 39.3;
-	_rCtOut = 117.8;
-	_chord = _rCtOut - _rCtIn;
+	_aIn = 0.;
+	_bIn = 39.3;
+	_aOut = 0.;
+	_bOut = 117.8;
+	_exp = -1.;
 	_rHub = 0.45;
 	_rShd = 0.5;
+	_chord = _rShd - _rHub;
 	_T0In = 288;
 	_rho0In = 1.5;
 	_lossesTE = 0.03;
 	_omega = 6000.; _omega = _omega*M_PI / 30.;
 	_mfr = 30.4;
 	_cp = _gamma*_gasConst / (_gamma - 1.);
-	_p0In = _rho0In*_gasConst*_T0In;
+	_p0In = _rho0In*_gasConst*_T0In;*/
 
+	//// Project 2: General whirl distribution design
+	//_isPressRatioSpecified = false;
+	//_gasConst = 287.1;
+	//_gamma = 1.4;
+
+	//_nStream = 11;
+	//_nStation = _nStream * 5 - 4;
+	//_indexLE = 20;
+	//_indexTE = 30;
+	//_maxIt = 700;
+	//_tolPsi = 1.e-5;
+	//_tolRho = 1.e-3;
+	//_tolRHS = 1.e-2;
+	//_convCritRho = 0.;
+	//_convCritRHS = 0.;
+	//_convCritPsi = 0.;
+
+	//_aIn = 500.;
+	//_bIn = -8.1;
+	//_aOut = 500.;
+	//_bOut = 8.1;
+	//_exp = 1.;
+	//_rHub = 0.12;
+	//_rShd = 0.30;
+	//_chord = _rShd - _rHub;
+	//_T0In = 288;
+	//_p0In = 100000;
+	//_lossesTE = 0.03;
+	//_omega = 9549.2966; _omega = _omega*M_PI / 30.;
+	//_mfr = 50.6479;
+	//_cp = _gamma*_gasConst / (_gamma - 1.);
+	//_rho0In = _p0In/_gasConst/_T0In;
+	
+	// Project 3: Free-vortex design with specified pressure ratio
+	_isPressRatioSpecified = true;
+	_gasConst = 287.1;
+	_gamma = 1.4;
+
+	_nStream = 11;
+	_nStation = _nStream * 5 - 4;
+	_indexLE = 20;
+	_indexTE = 30;
+	_maxIt = 200;
+	_tolPsi = 1.e-5;
+	_tolRho = 1.e-3;
+	_tolRHS = 1.e-2;
+	_convCritRho = 0.;
+	_convCritRHS = 0.;
+	_convCritPsi = 0.;
+
+	_rHub = 0.0508;
+	_rShd = 0.1016;
+	_chord = _rShd - _rHub;
+	_T0In = 288;
+	_p0In = 100000;
+	_lossesTE = 0.03;
+	_omega = 9549.2966; _omega = _omega*M_PI / 30.;
+	_mfr = 50.6479;
+	_cp = _gamma*_gasConst / (_gamma - 1.);
+	_rho0In = _p0In / _gasConst / _T0In;
 	return true;
 }
 
 bool REESolver::setData() 
 {
-	
+	//TODO
 	return true; 
 }
 
@@ -86,6 +151,8 @@ bool REESolver::initializeField()
 	_mesh.r.resize(_nStream, -1.);
 	_mesh.z.resize(_nStation, -1.);
 	_beta.resize(_nStream,-1.);
+	_rCtIn.resize(_nStream, -1.);
+	_rCtOut.resize(_nStream, -1.);
 	std::vector<double> tmp(int(_mesh.r.size()), -1.);
 	_psi.resize(int(_mesh.z.size()), tmp);
 	_Cz.resize(int(_mesh.z.size()), tmp);
@@ -100,23 +167,30 @@ bool REESolver::initializeField()
 	_RHS.resize(int(_mesh.z.size()), tmp);
 	_entropy.resize(int(_mesh.z.size()), tmp);
 
+	for (int j = 0; j < _nStream; j++){
+		_mesh.r[j] = (_rShd - _rHub) / (_nStream - 1)*j + _rHub;
+		_rCtIn[j] = _mesh.r[j] * (_aIn * pow(_mesh.r[j], _exp)
+			+ _bIn / _mesh.r[j]);
+		_rCtOut[j] = _mesh.r[j] * (_aOut * pow(_mesh.r[j], _exp)
+			+ _bOut / _mesh.r[j]);
+	}
+
 	for (int i = 0; i < _nStation; i++)
 	{
 		_mesh.z[i] = 5.*_chord / (_nStation - 1)*i;
 		for (int j = 0; j < _nStream; j++){
-			_mesh.r[j] = (_rShd - _rHub) / (_nStream - 1)*j + _rHub;
 			_psi[i][j] = (pow(_mesh.r[j], 2.) - pow(_rHub, 2.)) /
 				(pow(_rShd, 2.) - pow(_rHub, 2.));
 			_rho[i][j] = _rho0In;
 			_h0[i][j] = _cp*_T0In;
 			_p0[i][j] = _rho0In*_gasConst*_T0In;
 			if (i <= _indexLE)
-				_rCt[i][j] = _rCtIn;
-			if (i >= _indexTE)
-				_rCt[i][j] = _rCtOut;
+				_rCt[i][j] = _rCtIn[j]; //_rCtIn;
+			else if (i >= _indexTE)
+				_rCt[i][j] = _rCtOut[j]; //_rCtOut;
 			else
-				_rCt[i][j] = (_rCtOut - _rCtIn)*(i - _indexLE) /
-				(_indexTE - _indexLE) + _rCtIn;
+				_rCt[i][j] = (_rCtOut[j] - _rCtIn[j])*(i - _indexLE) /
+				(_indexTE - _indexLE) + _rCtIn[j];
 		}
 	}
 #if _DEBUG
@@ -247,10 +321,12 @@ bool REESolver::computeThermoVariables()
 
 			while (psiTarget>psiUp || psiTarget < psiDwn) {
 				indexStart++;
+				if (indexStart == _nStream - 1) {
+					std::cout << "Could not trace back streamline from location " << i << std::endl;
+					return false;
+				}
 				psiDwn = _psi[indexLeft][indexStart];
 				psiUp = _psi[indexLeft][indexStart + 1];
-				if (indexStart == _nStream)
-					std::cout << "Could not trace back streamline from location " << i << std::endl;
 			}
 			/*!Origin of streamline succesfully located
 			!----------------------------------*/
@@ -313,8 +389,8 @@ bool REESolver::computeThermoVariables()
 			!------------------------------------------------------ -
 			!*/
 			_rCt[i][j] = RCU1;
-			if (i == _indexLE) _rCt[i][j] = _rCtIn;
-			if (i == _indexTE) _rCt[i][j] = _rCtOut;
+			if (i == _indexLE) _rCt[i][j] = _rCtIn[j];
+			if (i == _indexTE) _rCt[i][j] = _rCtOut[j];
 			//IF(I.EQ.NLE + 1) RCU(I, J) = 117.85
 			//IF(I.EQ.NLE + 2) RCU(I, J) = 157.1
 			//IF(I.EQ.NLE + 3) RCU(I, J) = 196.35
@@ -415,6 +491,7 @@ bool REESolver::updateStreamField()
 	int count(0);
 	int iPlus(0);
 	int iMinus(0);
+	bool erronousPsi(false);
 
 	while (_convCritPsi > _tolPsi || count < 10) {
 		_convCritPsi = 0.;
@@ -442,9 +519,7 @@ bool REESolver::updateStreamField()
 					pow(dz / dr, 2.) / rhorjMinus, -1.);
 				if (i == _nStation - 1) // Neumann Boundary Conditions apply i.e. delPsi/delZ = 0
 				{
-					/*B[i][j] = _psi[iPlus][j] / rhoriPlus + _psi[iPlus][j] / rhoriMinus +
-						pow(dz / dr, 2.)*(_psi[i][j + 1] / rhorjPlus + _psi[i][j - 1] / rhorjMinus);*/
-					B[i][j] = 2.*_psi[iPlus][j] / _rho[i][j] / _mesh.r[j] +
+					B[i][j] = 2.*_psi[_nStation - 2][j] / _rho[i][j] / _mesh.r[j] +
 						pow(dz / dr, 2.)*(_psi[i][j + 1] / rhorjPlus + _psi[i][j - 1] / rhorjMinus);
 				}
 				else {
@@ -453,6 +528,14 @@ bool REESolver::updateStreamField()
 				}
 				oldPsi = _psi[i][j];
 				_psi[i][j] = A[i][j] * (B[i][j] + dz*dz*_RHS[i][j]);
+				// quick sanity check... 
+				if ((_psi[i][j] > 1.) || (_psi[i][j] <0.)) 
+				{
+					std::cout << "Updated stream function out of range at mesh point i = " << 
+						i + 1 << "and j = " << j + 1 << std::endl;
+					erronousPsi = true; 
+					//return false;
+				}
 				deltaPsi = abs(_psi[i][j] - oldPsi);
 				_convCritPsi = std::max(deltaPsi, _convCritPsi);
 			}
@@ -480,8 +563,136 @@ bool REESolver::updateStreamField()
 		return false;
 	}
 #endif 
+	if (erronousPsi == true)
+		return false; 
 	//TODO:
 	// implement Gauss-Seidel solver for solving all the points from the mesh in one go
+	return true;
+}
+
+//bool REESolver::updateStreamField()
+//{
+//	// Update psi at all point of the mesh simultaneously using 
+//	// a Gauss-Seidel solver for banded non-symmetric matrices
+//	// AX = B 
+//	// where A is the banded matrix and X the solution vector 
+//	// (strean function _psi at each point of the mesh)
+//	std::vector<std::vector<double> > A;
+//
+//	int n(_nStream*_nStation);
+//	std::vector<double> tmp(n, 0.);
+//	A.resize(n, tmp);
+//	int jj(0);
+//	int ii(0);
+//
+//	for (int i = 0; i < _nStation; i++)
+//	{
+//		for (int j = 0; j < _nStream; j++)
+//		{
+//			jj = j + i*_nStream;
+//			A[ii][jj] = 
+//		}
+//	}
+//#if _DEBUG
+//	std::ofstream myFile;
+//	myFile.open("./REE/output/checkUPdatedPsi.csv");
+//	if (myFile.is_open()) {
+//		for (int j = _nStream - 1; j >= 0; j--) {
+//			for (int i = 0; i < _nStation; i++) {
+//				myFile << _psi[i][j] << ",";
+//			}
+//			myFile << "\n";
+//		}
+//	}
+//	else {
+//		std::cout << "Could not open file" << std::endl;
+//		return false;
+//	}
+//#endif 
+//
+//	return true;
+//}
+
+bool REESolver::run1DmeanlineAnalysis()
+{
+	// local variables declaration 
+	double area1(-1.); double r1(-1.); double r2(-1.);
+	double rho1(-1.); double rho2(-1.);
+	double Cm1(-1.); double C1(-1.); double Ct1(-1);
+	double Cm2(-1.); double C2(-1.); double Ct2(-1);
+	double U1(-1.);
+	double T1(-1.); double TRel1(-1.); 
+	double p1(-1.); double pRel1(-1.);
+	double T2(-1.); double TRel2(-1.);
+	double p2(-1.); double pRel2(-1.); double pRel2Id(-1.);
+	double p02(-1.); double T02(-1.);
+	double rothalpy(-1.); double hRel1(-1.);
+
+	double currConvCrit(1.);
+	double currentRho(-1.);
+	int count(0);
+	double tol(1.e-5);
+	// velocity triangles at inlet 
+	r1 = pow(0.5*(pow(_rShd, 2.) + pow(_rHub, 2.)), 0.5);
+	area1 = M_PI*(pow(_rShd, 2.) - pow(_rHub, 2.));
+	Ct1 = _rCtIn[_nStream/2] / r1;
+	U1 = r1*_omega;
+	currentRho = _rho0In;
+	while (currConvCrit>tol || count<3)
+	{
+		Cm1 = _mfr / currentRho / area1;
+		C1 = pow(Cm1*Cm1 + Ct1*Ct1,0.5);
+		T1 = _T0In - 0.5*C1*C1 / _cp;
+		p1 = _p0In*pow(T1 / _T0In, _gamma / (_gamma - 1.));
+		rho1 = p1 / _gasConst / T1;
+		currConvCrit = abs(rho1 - currentRho) / currentRho; 
+		currentRho = rho1; 
+		count++;
+		if (count > _maxIt)
+			return false;
+	}
+	// velocity triangle at the outlet
+	r2 = r1; 
+	rothalpy = _cp*_T0In - _omega*r1*Ct1;
+	TRel1 = rothalpy/_cp + 0.5*pow(_omega*r1, 2.)/_cp;
+	TRel2 = TRel1 - 0.5*pow(_omega*r1, 2.)/_cp + 0.5*pow(_omega*r2, 2.)/_cp;
+	pRel1 = _p0In*pow(TRel1/_T0In, _gamma/(_gamma-1.));
+	pRel2Id = pRel1*pow(TRel2 / TRel1, _gamma / (_gamma - 1.));
+	pRel2 = pRel2Id - _lossesTE*(pRel1 - p1);
+	// Design mode 
+	Ct2 = _rCtOut[_nStream/2] / r2;
+	T02 = _T0In + _omega*(r2*Ct2-r1*Ct1)/_cp;
+	p02 = pRel2*pow(T02/TRel2,_gamma/(_gamma-1.));
+	
+	currConvCrit = 1.; 
+	currentRho = rho1; // incompressible as first assumption
+	while (currConvCrit>tol || count<3)
+	{
+		Cm2 = _mfr / currentRho / area1;
+		C2 = pow(Cm2*Cm2 + Ct2*Ct2, 0.5);
+		T2 = T02 - 0.5*C2*C2 / _cp;
+		p2 = p02*pow(T2 / T02, _gamma / (_gamma - 1.));
+		rho2 = p2 / _gasConst / T2;
+		currConvCrit = abs(rho2 - currentRho) / currentRho;
+		currentRho = rho2;
+		count++;
+		if (count > _maxIt)
+			return false;
+	}
+	std::ofstream myFile;
+	myFile.open("./REE/output/Results1DMeanlineAnalysis.csv");
+	if (myFile.is_open()) {
+		myFile << "The following values are measured at TE - meanline\n";
+		myFile << "Cz,Cr,beta,rho,r\n";
+		myFile << Cm2 << "," << 0. << "," <<
+			atan(abs(r2*_omega-Ct2)/Cm2) * 180. / M_PI << "," << rho2 << "," <<
+			r2 << "\n";
+		myFile.close();
+	}
+	else {
+		std::cout << "Could not open file writeReport()" << std::endl;
+		return false;
+	}
 	return true;
 }
 

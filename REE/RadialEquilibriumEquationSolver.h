@@ -11,6 +11,7 @@ public:
 	REESolver();
 	~REESolver();
 	bool runREESolver();
+	bool run1DmeanlineAnalysis();
 	bool setData();
 private:
 	int _nStation;
@@ -33,8 +34,15 @@ private:
 	double _rHub;
 	double _rShd;
 	double _chord;
-	double _rCtIn;
-	double _rCtOut;
+	// work distribution: rCt = r*[a*r^n+b/r]
+	std::vector<double> _rCtIn;
+	std::vector<double> _rCtOut;
+	double _aIn; 
+	double _bIn;
+	double _aOut;
+	double _bOut; 
+	double _exp; 
+	// 
 	double _mfr;
 	double _omega;
 	double _lossesTE;

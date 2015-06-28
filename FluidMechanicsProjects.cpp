@@ -11,6 +11,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	std::cout << "Entering main app\n" << std::endl;
 	REESolver reeSolver;
 	reeSolver.runREESolver();
+	reeSolver.run1DmeanlineAnalysis();
 	return 0;
 }
 
