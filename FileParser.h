@@ -11,9 +11,8 @@
 class FileParser
 {
 public:
-	std::map<std::string, std::string> &readFile(std::string &filePath);
+	std::map<std::string, std::string> readFile(std::string &filePath);
 private:
-	//std::ifstream  _inputFile;
 	std::string _filePath;
 };
 

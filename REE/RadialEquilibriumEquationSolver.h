@@ -1,8 +1,16 @@
 #include <vector> 
+#include <map> //std::string
+#include <string> //std::string
 
 struct data {
 	std::vector<double> r;
 	std::vector<double> z;
+};
+
+enum loadDistType { 
+	constant, 
+	linear,
+	parabolic
 };
 
 class REESolver
@@ -12,10 +20,10 @@ public:
 	~REESolver();
 	bool runREESolver();
 	bool run1DmeanlineAnalysis();
-	bool setData();
+	bool setData(const std::map<std::string, std::string> &inputMap);
 private:
 	int _nStation;
-	int _nStream;
+	int _nStream; //
 	int _indexLE;
 	int _indexTE;
 	double _gamma;
@@ -34,6 +42,8 @@ private:
 	double _rHub;
 	double _rShd;
 	double _chord;
+	loadDistType _loadDistTypeLE;
+	loadDistType _loadDistTypeTE;
 	// work distribution: rCt = r*[a*r^n+b/r]
 	std::vector<double> _rCtIn;
 	std::vector<double> _rCtOut;

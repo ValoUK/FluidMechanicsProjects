@@ -4,7 +4,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-std::map<std::string, std::string> &FileParser::readFile(std::string &filePath)
+std::map<std::string, std::string> FileParser::readFile(std::string &filePath)
 {
 	std::map<std::string, std::string> map;
 	std::ifstream inputFile(filePath.c_str());

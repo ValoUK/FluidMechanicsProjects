@@ -1,10 +1,16 @@
+#define _SCL_SECURE_NO_WARNINGS //This was used to avoid the compiler to give an error
+//in Debug mode due to the use of boost::split function
 #include "RadialEquilibriumEquationSolver.h"
+#include "radialEquilibriumEquationSolverData.h"
 #include <fstream>
 #include <iostream>
 #include <algorithm>    // std::max, std::fill
 #define _USE_MATH_DEFINES
 #include <math.h> // log, pow ...
 #include <cmath> // M_PI
+#include <boost/lexical_cast/lexical_cast_old.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 REESolver::REESolver()
 {
@@ -19,7 +25,6 @@ REESolver::~REESolver()
 bool REESolver::initialize()
 {// initialize to default (as for Project 1: free-vortex design
 	/*
-	_isPressRatioSpecified = false;
 	_gasConst = 287.1;
 	_gamma = 1.4;
 
@@ -51,41 +56,40 @@ bool REESolver::initialize()
 	_cp = _gamma*_gasConst / (_gamma - 1.);
 	_p0In = _rho0In*_gasConst*_T0In;*/
 
-	//// Project 2: General whirl distribution design
-	//_isPressRatioSpecified = false;
-	//_gasConst = 287.1;
-	//_gamma = 1.4;
+	// Project 2: General whirl distribution design
+	_gasConst = 287.1;
+	_gamma = 1.4;
 
-	//_nStream = 11;
-	//_nStation = _nStream * 5 - 4;
-	//_indexLE = 20;
-	//_indexTE = 30;
-	//_maxIt = 700;
-	//_tolPsi = 1.e-5;
-	//_tolRho = 1.e-3;
-	//_tolRHS = 1.e-2;
-	//_convCritRho = 0.;
-	//_convCritRHS = 0.;
-	//_convCritPsi = 0.;
+	_nStream = 11;
+	_nStation = _nStream * 5 - 4;
+	_indexLE = 20;
+	_indexTE = 30;
+	_maxIt = 700;
+	_tolPsi = 1.e-5;
+	_tolRho = 1.e-3;
+	_tolRHS = 1.e-2;
+	_convCritRho = 0.;
+	_convCritRHS = 0.;
+	_convCritPsi = 0.;
 
-	//_aIn = 500.;
-	//_bIn = -8.1;
-	//_aOut = 500.;
-	//_bOut = 8.1;
-	//_exp = 1.;
-	//_rHub = 0.12;
-	//_rShd = 0.30;
-	//_chord = _rShd - _rHub;
-	//_T0In = 288;
-	//_p0In = 100000;
-	//_lossesTE = 0.03;
-	//_omega = 9549.2966; _omega = _omega*M_PI / 30.;
-	//_mfr = 50.6479;
-	//_cp = _gamma*_gasConst / (_gamma - 1.);
-	//_rho0In = _p0In/_gasConst/_T0In;
+	_aIn = 500.;
+	_bIn = -8.1;
+	_aOut = 500.;
+	_bOut = 8.1;
+	_exp = 1.;//FIXME _expIn _expOut
+	_rHub = 0.12;
+	_rShd = 0.30;
+	_chord = _rShd - _rHub;
+	_T0In = 288;
+	_p0In = 100000;
+	_lossesTE = 0.03;
+	_omega = 9549.2966; _omega = _omega*M_PI / 30.;
+	_mfr = 50.6479;
+	_cp = _gamma*_gasConst / (_gamma - 1.);
+	_rho0In = _p0In/_gasConst/_T0In;
 	
 	// Project 3: Free-vortex design with specified pressure ratio
-	_isPressRatioSpecified = true;
+	/*
 	_gasConst = 287.1;
 	_gamma = 1.4;
 
@@ -110,13 +114,230 @@ bool REESolver::initialize()
 	_omega = 9549.2966; _omega = _omega*M_PI / 30.;
 	_mfr = 50.6479;
 	_cp = _gamma*_gasConst / (_gamma - 1.);
-	_rho0In = _p0In / _gasConst / _T0In;
+	_rho0In = _p0In / _gasConst / _T0In;*/
 	return true;
 }
 
-bool REESolver::setData() 
+bool REESolver::setData(const std::map<std::string,std::string> &inputMap) 
 {
-	//TODO
+	std::string value;
+	if (inputMap.find(REE_GAS_CONSTANT)!=inputMap.end())
+	{
+		value = inputMap.at(REE_GAS_CONSTANT);
+		_gasConst = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_PERFECT_GAS_RATIO) != inputMap.end())
+	{
+		value = inputMap.at(REE_PERFECT_GAS_RATIO);
+		_gamma = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_NPOINTS_SPANWISE) != inputMap.end())
+	{
+		value = inputMap.at(REE_NPOINTS_SPANWISE);
+		_nStream = boost::lexical_cast<int>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_NPOINTS_STREAMWISE) != inputMap.end())
+	{
+		value = inputMap.at(REE_NPOINTS_STREAMWISE);
+		_nStation = boost::lexical_cast<int>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_LEADING_EDGE_INDEX) != inputMap.end())
+	{
+		value = inputMap.at(REE_LEADING_EDGE_INDEX);
+		_indexLE = boost::lexical_cast<int>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_TRAILING_EDGE_INDEX) != inputMap.end())
+	{
+		value = inputMap.at(REE_TRAILING_EDGE_INDEX);
+		_indexTE = boost::lexical_cast<int>(value);
+	}
+	else
+	{
+		return false;
+	}
+	int type(-1);
+	if (inputMap.find(REE_LOADING_DISTRIBUTION_TYPE_LE) != inputMap.end())
+	{
+		value = inputMap.at(REE_LOADING_DISTRIBUTION_TYPE_LE);
+		type = boost::lexical_cast<int>(value); //FIXME more elegant way to do this?
+		if (type == 0)
+		{
+			_loadDistTypeLE = constant;
+		}
+		else if (type == 1)
+		{
+			_loadDistTypeLE = linear;
+		}
+		else if (type == 2)
+		{
+			_loadDistTypeLE = parabolic;
+		}
+		else
+			return false;
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_LOADING_DISTRIBUTION_TYPE_TE) != inputMap.end())
+	{
+		value = inputMap.at(REE_LOADING_DISTRIBUTION_TYPE_TE);
+		type = boost::lexical_cast<int>(value); //FIXME more elegant way to do this?
+		if (type == 0)
+		{
+			_loadDistTypeTE = constant;
+		}
+		else if (type == 1)
+		{
+			_loadDistTypeTE = linear;
+		}
+		else if (type == 2)
+		{
+			_loadDistTypeTE = parabolic;
+		}
+		else
+			return false;
+	}
+	else
+	{
+		return false;
+	}
+	std::vector<std::string> vec;
+	if (inputMap.find(REE_LOADING_DISTRIBUTION_COEFFS_LE) != inputMap.end())
+	{
+		value = inputMap.at(REE_LOADING_DISTRIBUTION_COEFFS_LE);		
+		boost::split(vec, value, boost::is_any_of(" "));
+		_aIn = boost::lexical_cast<double>(vec.at(0));
+		_bIn = boost::lexical_cast<double>(vec.at(1));
+		_exp = boost::lexical_cast<double>(vec.at(2));//FIXME _expIn _expOut
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_LOADING_DISTRIBUTION_COEFFS_TE) != inputMap.end())
+	{
+		value = inputMap.at(REE_LOADING_DISTRIBUTION_COEFFS_TE);
+		boost::split(vec, value, boost::is_any_of(" "));
+		_aOut = boost::lexical_cast<double>(vec.at(0));
+		_bOut = boost::lexical_cast<double>(vec.at(1));
+		_exp = boost::lexical_cast<double>(vec.at(2));//FIXME _expIn _expOut
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_HUB_RADIUS) != inputMap.end())
+	{
+		value = inputMap.at(REE_HUB_RADIUS);
+		_rHub = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_SHROUD_RADIUS) != inputMap.end())
+	{
+		value = inputMap.at(REE_SHROUD_RADIUS);
+		_rShd = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_INLET_TOTAL_TEMP) != inputMap.end())
+	{
+		value = inputMap.at(REE_INLET_TOTAL_TEMP);
+		_T0In = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_INLET_TOTAL_PRESS) != inputMap.end())
+	{
+		value = inputMap.at(REE_INLET_TOTAL_PRESS);
+		_p0In = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_REL_TOT_PRESS_LOSSES) != inputMap.end())
+	{
+		value = inputMap.at(REE_REL_TOT_PRESS_LOSSES);
+		_lossesTE = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_ROTATIONAL_SPEED) != inputMap.end())
+	{
+		value = inputMap.at(REE_ROTATIONAL_SPEED);
+		_omega = boost::lexical_cast<double>(value);
+		_omega = _omega*M_PI / 30.;
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_MASS_FLOW_RATE) != inputMap.end())
+	{
+		value = inputMap.at(REE_MASS_FLOW_RATE);
+		_mfr = boost::lexical_cast<double>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_ADVANCED_NITERATIONS_MAX) != inputMap.end())
+	{
+		value = inputMap.at(REE_ADVANCED_NITERATIONS_MAX);
+		_maxIt = boost::lexical_cast<int>(value);
+	}
+	else
+	{
+		return false;
+	}
+	if (inputMap.find(REE_ADVANCED_SET_OF_TOLERANCES) != inputMap.end())
+	{
+		value = inputMap.at(REE_ADVANCED_SET_OF_TOLERANCES);
+		boost::split(vec, value, boost::is_any_of(" "));
+		_tolPsi = boost::lexical_cast<double>(vec.at(0));
+		_tolRho = boost::lexical_cast<double>(vec.at(1));
+		_tolRHS = boost::lexical_cast<double>(vec.at(2));
+	}
+	else
+	{
+		return false;
+	}
+	_cp = _gamma*_gasConst / (_gamma - 1.);
+	_rho0In = _p0In / _gasConst / _T0In;
+	_chord = _rShd - _rHub;
+	_convCritRho = 0.;
+	_convCritRHS = 0.;
+	_convCritPsi = 0.;
 	return true; 
 }
 
@@ -124,10 +345,6 @@ bool REESolver::runREESolver()
 {
 	int count(0);
 
-	if(!setData()) {
-		std::cout << "Error occur while setting data" << std::endl;
-		return false;
-	}
 	initializeField();
 	while ((_convCritRHS > _tolRHS) || (_convCritRho > _tolRho) ||
 		count < 3) {
